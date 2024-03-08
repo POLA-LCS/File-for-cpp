@@ -6,9 +6,17 @@ using namespace std;
 typedef vector<string> file_content;
 
 class File{
-    const string END = "" + (char)EOF;
     fstream file;
+    file_content content;
     size_t pos = 1;
+
+    void readlines(){
+        file.open(path, ios::in);
+        if(file.is_open())
+            for(string line; getline(file, line);)
+                content.push_back(line);
+        file.close();
+    }
 public:
     string path;
 
@@ -63,32 +71,25 @@ public:
         file.open(path, ios::in | ios::app);
         if(!file.is_open())
             cerr << "[ERROR] Cannot open the file: " << name() + "." + exten() << '\n' << "Whole path: " << path;
+        this->readlines();
     }
 
-    size_t len(){
-        size_t i = 0;
-        string line;
-        while(getline(file, line))
-            i++;
-        
-        return i;
+    string& operator[](size_t index){
+        this->readlines();
+        return this->content[index];
     }
 
-    string read(){
-        if(pos > len()){
-            pos = 1;
-            return File::END;
-        }
-        string line;
-        for(size_t i; i < pos; i++)
-            getline(file, line);
-            
-        pos += 1;
-        return line;
+    friend string& operator>>(File& input, string& output){
+        input.file.open(input.path, ios::in);
+        if(input.file.is_open())
+            getline(input.file, output);
+        return output;
     }
 
-    void write(string line, const char end = '\n'){
-        file << line + end;
+    friend File& operator<<(File& output, string& input){
+        output.file.open(output.path, ios::app);
+        output.file << input;
+        return output;
     }
 };
 
@@ -98,9 +99,8 @@ int main(){
 
     File file("data.txt");
 
-    cout << file.read() << '\n';
-    cout << file.read() << '\n';
-
+    string a;
+    cout << a;
 
     return 0;
 }
