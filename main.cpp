@@ -1,158 +1,106 @@
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <vector>
 using namespace std;
 
-const string FILE_END = "" + (char)EOF;
-namespace mode {
-    const char input = 0b1;
-    const char output = 0b10;
-};
-
+typedef vector<string> file_content;
 
 class File{
-    fstream self;
+    const string END = "" + (char)EOF;
+    fstream file;
     size_t pos = 1;
-    string path;
-    bool is_open;
-
-    // Read a line and returns it (cycles).
-    string read(){
-        if(pos > this->height()){
-            this->restart();
-            return FILE_END;
-        }
-        
-        string line;
-        for(size_t i = 0; i < this->pos; i++)
-            getline(self, line);
-        pos += 1;
-
-        return line;
-    }
-
 public:
-    
-    /*A file class with his read and write oprations and much more! :D*/
+    string path;
+
+    /* Checks if a file exists
+    NOTE: Does not support directories. */
+    static bool exists(string path){
+        fstream tmp;
+        tmp.open(path, ios::in);
+        if(!tmp.is_open())
+            return false;
+        tmp.close();
+        return true;
+    }
+
+    bool exists() const {
+        return File::exists(path);
+    }
+
+    /* Creates a file if it doesn't exists */
+    static void create(string path){
+        if(exists(path))
+            return;
+        fstream tmp;
+        tmp.open(path, ios::out);
+        tmp.close();
+    }
+
+    /* Returns the name of the file without the entire path
+    my\\example.txt -> example */
+    string name() const {
+        int find = path.rfind('/');
+        int start = (find != string::npos)? find + 1 : 0;
+
+        find = path.rfind('.');
+        int end = (find != string::npos)? find : path.size();
+
+        return path.substr(start, end - start);
+    }
+
+    /* Returns the extention of the file
+    my\\example.txt -> txt */
+    string exten() const {
+        int find = path.rfind('.');
+        if(find == string::npos)
+            return "";
+        return path.substr(find + 1);
+    }
+
     File(string path): path(path){
-        this->is_open = this->open(mode::input | mode::output);
-        if(!is_open)
-            cerr << "Cannot open the input file: (" << this->path << ")";
+        if(!exists())
+            create(path);
+        file.open(path, ios::in | ios::app);
+        if(!file.is_open())
+            cerr << "[ERROR] Cannot open the file: " << name() + "." + exten() << '\n' << "Whole path: " << path;
     }
 
-    bool open(const char open_mode){
-        if(open_mode == mode::input)
-            self.open(this->path.c_str(), ios::in);
-        else if(open_mode == mode::output)
-            self.open(this->path.c_str(), ios::app);
-        else if(open_mode == mode::input | mode::output)
-            self.open(this->path.c_str(), ios::in | ios::app);
-        return self.is_open();
-    }
-
-    // Returns the size of the file (see File::height)
-    size_t size(){
-        cerr << "[DEV ERROR] File size not implemented yet. :/";
-    }
-
-    // Returns the amount of lines in the file (see File::size)
-    size_t height(){
-        string line;
+    size_t len(){
         size_t i = 0;
-        while(getline(self, line)) i++;
+        string line;
+        while(getline(file, line))
+            i++;
+        
         return i;
     }
 
-    /* Returns the extention of the file (text after the dot).
-    example.txt -> txt */
-    string extention(){
-        int ext_index = this->path.rfind('.');
-        if(ext_index != string::npos){
-            string ext;
-            for(size_t i = ext_index + 1; i < path.size(); i++)
-                ext += path[i];
-            return ext;
+    string read(){
+        if(pos > len()){
+            pos = 1;
+            return File::END;
         }
-        return "";
-    }
-
-    /* Returns the name of the file.
-    ex/samples.txt -> samples */
-    string name(){
-        int slash_i = this->path.rfind("/");
-        int dot_i = this->path.rfind(".");
-        
-        int start = (slash_i != string::npos) ? slash_i + 1 : 0;
-        int end = (dot_i != string::npos) ? dot_i : path.size();
-        string name;
-        for(size_t i = start; i < end; i++)
-            name += path[i];
-        return name;
-    }
-
-    // Restart the position of the line.
-    void restart(){
-        this->pos = 1;
-    }
-
-    // Reads a line in a buffer (returns a state).
-    bool read(string& buffer){
-        string line = this->read();
-        if(line != FILE_END){
-            buffer = line;
-            return true;
-        }
-        return false;
-    }
-
-    // Push back all the file lines in a vector.
-    void read(vector<string>& lines){
-        for(string line; this->read(line);)
-            lines.push_back(line);
-    }
-
-    // Reads a line and concatenates it to a string.
-    friend string& operator>>(File& input, string& output){
         string line;
-        input.read(line);
-        output += line;
-        return output;
+        for(size_t i; i < pos; i++)
+            getline(file, line);
+            
+        pos += 1;
+        return line;
     }
 
-    // Reads a line and push backs it to a vector.
-    friend vector<string>& operator>>(File& input, vector<string>& output){
-        string line;
-        input.read(line);
-        output.push_back(line);
-        return output;
-    }
-
-    void write(const string& input = "\n"){
-        self << input;
-    }
-
-    void write(vector<string>& input){
-        for(string line : input)
-            self << line << '\n';
-    }
-
-    friend File& operator<<(File& output, string& input){
-        output.write(input);
-        return output;
-    }
-
-    friend File& operator<<(File& output, vector<string>& input){
-        output.write(input);
-        return output;
+    void write(string line, const char end = '\n'){
+        file << line + end;
     }
 };
 
-#define print(vect) for(size_t i = 0; i < vect.size(); i++){cout << vect[i] << '\n';}
+#define PRINT_VECTOR(vect) for(auto i : vect){ cout << i << endl; }
 
-int main(int argc, char* argv[]){
-    
-    // TODO: fix the open and close file operations.
-    // Cannot read or write because the file opens in the constructor.
+int main(){
+
+    File file("data.txt");
+
+    cout << file.read() << '\n';
+    cout << file.read() << '\n';
+
 
     return 0;
 }
